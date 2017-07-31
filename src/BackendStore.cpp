@@ -16,18 +16,21 @@ BackendStore::BackendStore( const char* client_name ){
 
     r = rados_create(&cluster, client_name);
     if (r < 0) {
+	assert(0);
         log_err("rados_create failed.\n");
         goto failed_early;
     }
 
     r = rados_conf_read_file(cluster, NULL);
     if (r < 0) {
+	assert(0);
         log_err("rados_conf_read_file failed.\n");
         goto failed_early;
     }
 
     r = rados_connect(cluster);
     if (r < 0) {
+	assert(0);
         log_err("rados_connect failed.\n");
         goto failed_shutdown;
     }
@@ -59,6 +62,7 @@ int BackendStore::_open( std::string rbd_name, std::string pool_name ){
     //printf("connect to rados\n");
     int r = rados_ioctx_create(cluster, pool_name.c_str(), &rbd->io_ctx);
     if (r < 0) {
+	assert(0);
         log_err("rados_ioctx_create failed.\n");
         goto failed_shutdown;
     }
@@ -68,6 +72,7 @@ int BackendStore::_open( std::string rbd_name, std::string pool_name ){
     r = rbd_open_skip_cache(rbd->io_ctx, rbd_name.c_str(), &rbd->image, NULL /*snap */ );
     //r = rbd_open(rbd->io_ctx, rbd_name.c_str(), &rbd->image, NULL /*snap */ );
     if (r < 0) {
+	assert(0);
         log_err("rbd_open failed.\n");
         goto failed_open;
     }
@@ -169,6 +174,7 @@ int BackendStore::_aio_write( rbd_data* rbd, uint64_t offset, uint64_t length, c
     //std::cerr << "rbd_aio_write: comp: " << io_u->completion << " offset: " << offset << " length: " << length<< std::endl;
     r = rbd_aio_write(rbd->image, offset, length, data, io_u->completion);
     if (r < 0) {
+	assert(0);
         log_err("queue rbd_aio_write failed.\n");
         return -1;
     }
@@ -179,6 +185,7 @@ int BackendStore::_write( rbd_data* rbd, uint64_t offset, uint64_t length, const
     //log_print("rbd_write: offset:%lu, length: %lu\n", offset, length);
     int r = rbd_write(rbd->image, offset, length, data);
     if (r < 0) {
+	assert(0);
         log_err("rbd_write failed.\n");
         return -1;
     }
@@ -197,6 +204,7 @@ ssize_t BackendStore::_aio_read( rbd_data* rbd, uint64_t offset, uint64_t length
     //std::cerr << "rbd_aio_read: comp: " << io_u->completion << " offset: " << offset << " length: " << length<< std::endl;
     r = rbd_aio_read(rbd->image, offset, length, data, io_u->completion);
     if (r < 0) {
+	assert(0);
         log_err("rbd_aio_read failed.\n");
         return -1;
     }
@@ -207,6 +215,7 @@ ssize_t BackendStore::_read( rbd_data* rbd, uint64_t offset, uint64_t length, ch
     //log_print("rbd_read: offset:%lu, length: %lu\n", offset, length);
     ssize_t r = rbd_read(rbd->image, offset, length, data);
     if (r < 0) {
+	assert(0);
         log_err("rbd_read failed.\n");
         return -1;
     }

@@ -1,5 +1,6 @@
 #include "rbc/SimpleBlockCacher.h"
 
+// MAKK
 
 namespace rbc {
 
@@ -9,6 +10,7 @@ SimpleBlockCacher::SimpleBlockCacher(std::string device_name, std::string metast
     metastore = new MetaStore(metastore_dir);
 
     if (metastore == NULL) {
+            /////////////!
         assert(0);
     }
 
@@ -44,6 +46,7 @@ SimpleBlockCacher::SimpleBlockCacher(std::string device_name, std::string metast
     device_fd = _open( device_name );
 
     if (device_fd < 0) {
+            ////////////////!
         assert(0);
     }
 }
@@ -66,6 +69,8 @@ int SimpleBlockCacher::_open( std::string Device_Name ){
     int mode = O_CREAT | O_RDWR | O_SYNC, permission = S_IRUSR | S_IWUSR;
     int fd = ::open( Device_Name.c_str(), mode, permission );
     if ( fd <= 0 ) {
+            ///////
+            assert(0);//
         log_err( "[ERROR] SimpleBlockCacher::SimpleBlockCacher, unable to open %s, error code: %d ", Device_Name.c_str(), fd );
         close(fd);
         return fd;
@@ -76,6 +81,7 @@ int SimpleBlockCacher::_open( std::string Device_Name ){
     fstat(fd, &file_st);
     if (file_st.st_size < _total_size) {
         if (-1 == ftruncate(fd, _total_size)) {
+                assert(0);
 
             close(fd);
             return fd;
@@ -151,6 +157,7 @@ int64_t SimpleBlockCacher::free_lookup(){
         mempool->free( (void*)this_node, sizeof(free_node) );
         return free_index;
     }else{
+        assert(0);
         log_err("SimpleBlockCacher::free_lookup can't find free node\n");
         return -1;
     }
@@ -218,6 +225,7 @@ int SimpleBlockCacher::update_index( uint64_t cache_id, uint64_t block_id, std::
 int SimpleBlockCacher::_close( int block_fd ){
     int ret = ::close(block_fd);
     if(ret < 0){
+            assert(0);
         perror( "close block_fd failed" );
         return -1;
     }
@@ -238,6 +246,7 @@ int SimpleBlockCacher::_write( uint64_t cache_id, const char *buf, uint64_t offs
         block_id = write_index_lookup( cache_id, ts );
 
     if(block_id < 0) {
+            assert(0);
         log_err( "[ERROR] SimpleBlockCacher::write_fd, unable to write data, block_id: %lu\n", cache_id );
         return -1;
     }
@@ -252,6 +261,7 @@ int SimpleBlockCacher::_write( uint64_t cache_id, const char *buf, uint64_t offs
     //ret = 0;
     if (ret < 0) {
         log_err( "[ERROR] SimpleBlockCacher::write_fd, unable to write data, block_id: %lu\n", block_id );
+        assert(0);//
         return -1;
     }
     // update cache index
@@ -261,6 +271,7 @@ int SimpleBlockCacher::_write( uint64_t cache_id, const char *buf, uint64_t offs
     ret = metastore->put(std::to_string(cache_id), std::to_string(ondisk_off));
     if (ret < 0) {
         log_err( "[ERROR] SimpleBlockCacher::write_fd, unable to write metadata, block_id: %lu\n", block_id );
+        assert(0);//
         return -1;
     }
 
@@ -280,6 +291,7 @@ ssize_t SimpleBlockCacher::_read( uint64_t cache_id, char *buf, uint64_t offset,
     ret = pread( device_fd, buf, object_size, block_id * object_size + index * object_size );
     if ( ret < 0 ){
         log_err( "[ERROR] SimpleBlockCacher::read_fd, unable to read data, error code: %d ", ret );
+        assert(0); //
         return -1;
     }
 
