@@ -37,7 +37,7 @@ public:
             assert(0);
         }
     }
-    
+
     ~HeaderQueue(){
         if(init){
             int ret = mq_close(mq_id);
@@ -55,9 +55,10 @@ public:
         char* msg_header = new char[HEADER_SIZE+1]();
         ssize_t exact_bytes_received;
         exact_bytes_received = mq_receive(mq_id, msg_header, HEADER_SIZE, NULL);
-    
+
         if(exact_bytes_received == -1){
             fprintf( stdout, "MSG QUEUE %s RECEIVE failed, error no: %s\n", mqueue_name, strerror(errno) );
+            assert(0);   //
             return NULL;
         }
         if( strcmp( msg_header, MQUEUE_STOP) == 0 ){
@@ -66,19 +67,19 @@ public:
         std::string data(msg_header, HEADER_SIZE);
         Msg *msg = new Msg(data, content_segment->get_shm_ptr());
         //std::cout << "location_id:" << msg->location_id << std::endl;
-        
+
         delete[] msg_header;
-    
+
         return msg;
     }
-    
+
     int send_request( Msg* msg, void* arg = NULL ){
         uint64_t shm_content_offset = 0;
         int ret = 0;
         if(msg->header.type == MSG_REPLY_STAT || msg->header.type == MSG_REPLY_DATA ){
             ret = start_send( msg->toString_shm() );
         }else if(msg->header.type == MSG_WRITE || msg->header.type == MSG_READ){
-            shm_content_offset = content_segment->get_free_trunk_offset( msg->content_length() ); 
+            shm_content_offset = content_segment->get_free_trunk_offset( msg->content_length() );
             if( shm_content_offset == -1 ){
                 std::cout << "can't find free chunk in shm" << std::endl;
                 assert(0);
@@ -93,12 +94,13 @@ public:
         }
         return ret;
     }
-    
+
     int start_send(const char* data, ssize_t length){
         //std::cout << "start_send: " << length << "bytes" << std::endl;
-        int ret = mq_send( mq_id, data, length, 0 );
+        int ret = mq_send( mq_id, data, length, 0 );   //
         if( ret == -1 ){
             fprintf( stdout, "MSG QUEUE %s SEND failed, error no: %s\n", mqueue_name, strerror(errno) );
+            assert(0);
             return -1;
         }
         return 0;
@@ -107,7 +109,7 @@ public:
     int start_send(std::string data){
         return start_send( data.c_str(), data.length() );
     }
-    
+
     void stop(){
         mq_send( mq_id, MQUEUE_STOP, strlen(MQUEUE_STOP), 0 );
     }
