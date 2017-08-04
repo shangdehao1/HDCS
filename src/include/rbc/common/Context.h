@@ -21,6 +21,7 @@
 #include <boost/lexical_cast.hpp>
 #include <chrono>
 #include <condition_variable>
+#include "rbc/common/FailoverHandler.h"
 
 #define THREADPOOLSIZE 64
 
@@ -76,7 +77,12 @@ public:
         if( log_path!="false" ){
             stderr_no = dup(fileno(stderr));
             log_fd = fopen( log_path.c_str(), "w" );
-            dup2(fileno(log_fd), STDERR_FILENO);
+	    if(log_fd==NULL){
+		failover_handler(LOG_FILE_OPEN,NULL);	
+	    }
+            if(-1==dup2(fileno(log_fd), STDERR_FILENO)){
+		failover_handler(LOG_FILE_DUP2,NULL);
+	    }
         }
 
         object_size = stoull(config->configValues["object_size"]);

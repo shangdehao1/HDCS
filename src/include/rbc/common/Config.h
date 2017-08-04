@@ -4,7 +4,7 @@
 #include <map>
 #include <string>
 #include <vector>
-
+#include "FailoverHandler.h"
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
@@ -51,6 +51,7 @@ public:
             std::cout << "error when reading: " << cfg_file
                       << ", config file for missing?" << std::endl;
             // assume general.conf should be created by admin manually
+            failover_handler(HDCS_CONFIG_FILE, NULL);
             assert(0);
         }
 

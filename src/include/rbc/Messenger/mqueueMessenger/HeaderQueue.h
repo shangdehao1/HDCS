@@ -13,6 +13,7 @@
 #include "rbc/Message.h"
 #include "rbc/Messenger/Messenger.h"
 #include "rbc/Messenger/mqueueMessenger/ContentSegment.h"
+#include "rbc/common/FailoverHandler.h"
 
 namespace rbc{
 class HeaderQueue: public Messenger{
@@ -34,7 +35,7 @@ public:
         mq_id = mq_open(mqueue, type, 0666,  &attr);
         if( mq_id == -1 ){
             fprintf( stdout, "Open MSG QUEUE %s failed, error no: %s\n", mqueue, strerror(errno) );
-            assert(0);
+            failover_handler(MQ_OPEN, NULL);
         }
     }
 
@@ -42,10 +43,12 @@ public:
         if(init){
             int ret = mq_close(mq_id);
             if( ret != 0 ){
+		failover_handler(MQ_CLOSE,NULL);
                 fprintf( stdout, "Close MSG QUEUE ID %d failed, error no: %s\n", mq_id, strerror(errno) );
             }
             ret = mq_unlink(mqueue_name);
             if( ret != 0 ){
+		failover_handler(MQ_UNLINK,NULL);
                 fprintf( stdout, "Remove MSG QUEUE %s failed, error no: %s\n", mqueue_name, strerror(errno) );
             }
         }
@@ -58,7 +61,7 @@ public:
 
         if(exact_bytes_received == -1){
             fprintf( stdout, "MSG QUEUE %s RECEIVE failed, error no: %s\n", mqueue_name, strerror(errno) );
-            assert(0);   //
+            failover_handler(MQ_RECEIVE,NULL);
             return NULL;
         }
         if( strcmp( msg_header, MQUEUE_STOP) == 0 ){
@@ -100,7 +103,7 @@ public:
         int ret = mq_send( mq_id, data, length, 0 );   //
         if( ret == -1 ){
             fprintf( stdout, "MSG QUEUE %s SEND failed, error no: %s\n", mqueue_name, strerror(errno) );
-            assert(0);
+            failover_handler(MQ_SEND,NULL);
             return -1;
         }
         return 0;
