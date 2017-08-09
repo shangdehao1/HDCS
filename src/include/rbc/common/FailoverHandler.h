@@ -2,7 +2,7 @@
 
 namespace rbc{
 
-// ceph failure points.
+// ceph failure points
 #define BACKEND_RADOS_CREATE 101
 #define BACKEND_RADOS_READ_CONF_FILE 102
 #define BACKEND_RADOS_CONNECT 103
