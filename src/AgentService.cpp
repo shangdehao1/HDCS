@@ -38,20 +38,20 @@ AgentService::~AgentService(){
     log_print("delete agentservice complete\n");
 }
 
-void AgentService::do_flush( CacheEntry* c_entry ){
+int AgentService::do_flush( CacheEntry* c_entry ){
 
     ReadLock cache_entry_r_lock(c_entry->rwlock);
     if( c_entry == NULL || c_entry->is_null() ){
-        return;
+        return 0;
     }
 
     if(!c_entry->get_if_dirty()){
-        return;
+        return 0;
     }
 
     if(c_entry->inflight_flush){
         //the c_entry is still pending for flush completion.
-        return;
+        return 0;
     }
 
     /*
@@ -69,8 +69,8 @@ void AgentService::do_flush( CacheEntry* c_entry ){
     if(ret < 0){
         log_err( "AgentService::flush read_from_cache failed.Details: %s\n", (c_entry->get_name()).c_str() );
         cct->mempool->free( (void*)data_from_cache, sizeof(char) * cct->object_size);
-        assert(0);
-        return;
+        //assert(0);
+        return ret;
     }
     //create a char* list by cachemap
     DATAMAP_T data_map = c_entry->get_data_map();
@@ -189,7 +189,7 @@ void AgentService::flush_by_ratio( float target_ratio = 1.0 ){
     }
     return;
 }
-
+// public interface
 void AgentService::evict_by_ratio(){
     uint64_t dirty_block_count = cct->lru_dirty->get_length();
     uint64_t clean_block_count = cct->lru_clean->get_length();
@@ -199,7 +199,7 @@ void AgentService::evict_by_ratio(){
     log_print( "AgentService::evict_by_ratio:  current cache ratio:%2.4f \n", ( 1.0*total_cached_block/total_block_count ) );
     if( (1.0 * total_cached_block/total_block_count) < cache_ratio_max ){
         log_print("AgentService::evict_by_ratio: cache ratio is less than cache_ratio_max, no need do evict this time.\n");
-        return;
+        return 0;
     }
 
     WriteLock w_lock(cct->cachemap_access);
