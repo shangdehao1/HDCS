@@ -34,14 +34,14 @@ int CacheService::queue_io( Request* req ){
 
 int CacheService::do_flush_op(Op* op) {
     //TODO:
-    agentservice->flush_all();
-    return 0;
+    int ret=agentservice->flush_all();
+    return ret;
 }
 
 int CacheService::do_discard_op(Op* op) {
     //TODO:
-    agentservice->do_evict(op->cache_entry);
-    return 0;
+    int ret=agentservice->do_evict(op->cache_entry);
+    return ret;
 }
 
 void CacheService::_process(){
