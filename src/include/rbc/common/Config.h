@@ -50,7 +50,7 @@ public:
     std::vector<std::string> slave_ip_vec;
     std::vector<std::string> slave_port_vec;
 
-    Config(std::string rbd_name, bool if_master){
+    Config(std::string rbd_name, bool if_master=false){
 
         const std::string cfg_file = "/etc/rbc/general.conf";
         boost::property_tree::ptree pt;
