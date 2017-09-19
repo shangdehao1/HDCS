@@ -25,9 +25,9 @@ class Config{
 public:
     typedef std::map<std::string, std::string> ConfigInfo;
     ConfigInfo configValues{
-        {"master_ip",  "127.0.0.1"},
-        {"messenger_port",  "9090"},
-        {"replication_num", "3"},  // default amount of replication.          
+        {"master_ip",  "10.77.77.126"},
+        {"messenger_port",  "8081"},
+        {"replication_num", "1"},  // default amount of replication.          
         /*
         {"slave_ip",  "192.168.5.11"},
         {"slave_ip_1", "192.168.5.12"},
@@ -50,7 +50,7 @@ public:
     std::vector<std::string> slave_ip_vec;
     std::vector<std::string> slave_port_vec;
 
-    Config(std::string rbd_name, bool if_master){
+    Config(std::string rbd_name, bool if_master=false){
 
         const std::string cfg_file = "/etc/rbc/general.conf";
         boost::property_tree::ptree pt;
