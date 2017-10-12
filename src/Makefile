@@ -13,7 +13,8 @@ INCS=-I./
 DIST_LIB = lib/libhdcs.so
 TEST_TOOL = hdcs_test_tool
 #POLICY = CACHE
-POLICY = TIER
+#POLICY = TIER
+POLICY = ALL
 .PHONY : all
 all: $(DIST_LIB) $(TEST_TOOL)
 
@@ -33,15 +34,26 @@ HDCSCore_cache.oo : core/HDCSCore.cpp
 HDCSCore_tier.oo : core/HDCSCore.cpp
 	${CXX} -c ${CXXFLAGS} -DTIER_POLICY ${INCS} $< -o $@
 
+HDCSCore.oo : core/HDCSCore.cpp
+	${CXX} -c ${CXXFLAGS} -DCACHE_POLICY -DTIER_POLICY ${INCS} $< -o $@
+
 CACHE_CORE_OBJECTS := HDCSCore_cache.oo
 TIER_CORE_OBJECTS := HDCSCore_tier.oo
+HDCS_CORE_OBJECTS := HDCSCore.oo
 
 ifeq ($(POLICY),CACHE)
 $(DIST_LIB): core/policy/CachePolicy.o $(COMMON_OBJECTS) $(RBD_OBJECTS) $(CACHE_CORE_OBJECTS)
 	mkdir -p lib
 	${CXX} ${CXXFLAGS} ${INCS} libhdcs.c -shared -o $@ $^ ${PLATFORM_LDFLAGS}
-else
+endif
+ifeq ($(POLICY), TIER)
 $(DIST_LIB): core/policy/TierPolicy.o $(COMMON_OBJECTS) $(RBD_OBJECTS) $(TIER_CORE_OBJECTS)
+	mkdir -p lib
+	${CXX} ${CXXFLAGS} ${INCS} libhdcs.c -shared -o $@ $^ ${PLATFORM_LDFLAGS}
+endif
+
+ifeq ($(POLICY), ALL)
+$(DIST_LIB): core/policy/CachePolicy.o core/policy/TierPolicy.o $(COMMON_OBJECTS) $(RBD_OBJECTS) $(HDCS_CORE_OBJECTS)
 	mkdir -p lib
 	${CXX} ${CXXFLAGS} ${INCS} libhdcs.c -shared -o $@ $^ ${PLATFORM_LDFLAGS}
 endif
@@ -50,7 +62,7 @@ $(TEST_TOOL):
 	${CXX} ${CXXFLAGS} ${INCS} test.c -o $@ $^ -Llib -lhdcs
 
 clean:
-	rm -rf common/*.o core/*.o store/SimpleStore/*.o store/RBD/*.o core/policy/*.o lib/libhdcs.so hdcs_test_tool
+	rm -rf common/*.o core/*.o core/*.oo store/SimpleStore/*.o store/RBD/*.o core/policy/*.o lib/libhdcs.so hdcs_test_tool
 	rm -rf /usr/local/include/hdcs
 	rm -rf /usr/local/lib/libhdcs.so
 
