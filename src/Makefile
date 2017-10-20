@@ -5,18 +5,19 @@ CXX=g++
 PLATFORM=OS_LINUX
 OPTIMIZATION?=-O2 -Wno-unused-result
 OPT=$(OPTIMIZATION)
-CXXFLAGS=-std=c++11 ${OPT} -fPIC -g -D__STDC_FORMAT_MACROS -DLIBRBC_VERSION='"${LIBRBC_VERSION}"'
+CXXFLAGS=-std=c++14 ${OPT} -fPIC -g -D__STDC_FORMAT_MACROS -DLIBRBC_VERSION='"${LIBRBC_VERSION}"'
 CCFLAGS=${OPT} -fPIC -g -D__STDC_FORMAT_MACROS -DLIBRBC_VERSION='"${LIBRBC_VERSION}"'
 PLATFORM_LDFLAGS=-lboost_thread -lboost_system -lpthread -lrbd -lrados
 INCS=-I./
-
+CONTROLLER = HDCS
 DIST_LIB = lib/libhdcs.so
 TEST_TOOL = hdcs_test_tool
 #POLICY = CACHE
 #POLICY = TIER
 POLICY = ALL
 .PHONY : all
-all: $(DIST_LIB) $(TEST_TOOL)
+#all: $(DIST_LIB) $(TEST_TOOL)
+all: $(DIST_LIB) $(CONTROLLER)
 
 %.o : %.cpp
 	${CXX} -c ${CXXFLAGS} ${INCS} $< -o $@
@@ -27,6 +28,8 @@ all: $(DIST_LIB) $(TEST_TOOL)
 COMMON_OBJECTS:= store/SimpleStore/SimpleBlockStore.o 
 
 RBD_OBJECTS:= store/RBD/RBDImageStore.o 
+
+NETWORK_OBJECTS:= Network/io_pool.o
 
 HDCSCore_cache.oo : core/HDCSCore.cpp
 	${CXX} -c ${CXXFLAGS} -DCACHE_POLICY ${INCS} $< -o $@
@@ -53,19 +56,23 @@ $(DIST_LIB): core/policy/TierPolicy.o $(COMMON_OBJECTS) $(RBD_OBJECTS) $(TIER_CO
 endif
 
 ifeq ($(POLICY), ALL)
-$(DIST_LIB): core/policy/CachePolicy.o core/policy/TierPolicy.o $(COMMON_OBJECTS) $(RBD_OBJECTS) $(HDCS_CORE_OBJECTS)
+$(CONTROLLER): HDCSController.o core/policy/CachePolicy.o core/policy/TierPolicy.o $(COMMON_OBJECTS) $(RBD_OBJECTS) $(NETWORK_OBJECTS) $(HDCS_CORE_OBJECTS)
+	${CXX} ${CXXFLAGS} ${INCS} HDCS.cpp -o $@ $^ ${PLATFORM_LDFLAGS}
+endif
+
+$(DIST_LIB):
 	mkdir -p lib
 	${CXX} ${CXXFLAGS} ${INCS} libhdcs.c -shared -o $@ $^ ${PLATFORM_LDFLAGS}
-endif
 
 $(TEST_TOOL):
 	${CXX} ${CXXFLAGS} ${INCS} test.c -o $@ $^ -Llib -lhdcs
 
 clean:
-	rm -rf common/*.o core/*.o core/*.oo store/SimpleStore/*.o store/RBD/*.o core/policy/*.o lib/libhdcs.so hdcs_test_tool
+	rm -rf common/*.o core/*.o core/*.oo store/SimpleStore/*.o store/RBD/*.o core/policy/*.o Network/*.o lib/libhdcs.so hdcs_test_tool HDCS
 	rm -rf /usr/local/include/hdcs
 	rm -rf /usr/local/lib/libhdcs.so
 
 install:
 	cp -r include/ /usr/local/include/hdcs
 	cp lib/libhdcs.so /usr/local/lib/
+	cp HDCS /usr/local/bin/
