@@ -14,8 +14,12 @@
 #include "rbc/common/WorkQueue.h"
 #include "rbc/Messenger/mqueueMessenger/MqueueSession.h"
 #include "rbc/Messenger/asioMessenger/AsioSession.h"
+<<<<<<< HEAD
 #include "rbc/Messenger/io_pool.h"
 
+=======
+#include "rbc/common/FailoverHandler.h"
+>>>>>>> 0c2c0aa69725d34dcfa9e8afef05e129e5a213bb
 
 namespace rbc{
 using boost::asio::ip::tcp;
@@ -77,6 +81,7 @@ public:
             }
             start_accept();
         }else{
+	    failover_handler(ASIO_SOCKET_CONNECTION,NULL);
             log_print("AsioListener::handle_accept failed to accept new connection\n");;
         }
     }

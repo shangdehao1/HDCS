@@ -4,8 +4,12 @@
 #include <map>
 #include <string>
 #include <vector>
+<<<<<<< HEAD
 #include <sstream>
 
+=======
+#include "FailoverHandler.h"
+>>>>>>> 0c2c0aa69725d34dcfa9e8afef05e129e5a213bb
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
@@ -30,9 +34,13 @@ public:
         {"replication_num", "1"},  // default amount of replication.          
         /*
         {"slave_ip",  "192.168.5.11"},
+<<<<<<< HEAD
         {"slave_ip_1", "192.168.5.12"},
         {"slave_messenger_port_1","9091"},
         */
+=======
+        {"messenger_port",  "9090"},
+>>>>>>> 0c2c0aa69725d34dcfa9e8afef05e129e5a213bb
         {"enable_MemoryUsageTracker","false"},
         {"cache_dir","/mnt/hyperstash_0/"},
         {"object_size","4096"},
@@ -60,6 +68,7 @@ public:
             std::cout << "error when reading: " << cfg_file
                       << ", config file for missing?" << std::endl;
             // assume general.conf should be created by admin manually
+            failover_handler(HDCS_CONFIG_FILE, NULL);
             assert(0);
         }
 
