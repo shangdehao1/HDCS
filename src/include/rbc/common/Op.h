@@ -86,6 +86,7 @@ public:
     int replica_aio_write( AioCompletion *comp , int replica_seq_id ){
         Msg* msg = new Msg( image_name.c_str(), offset, data, length, MSG_WRITE );
 <<<<<<< HEAD
+<<<<<<< HEAD
         (cct->asio_client_vec)[ replica_seq_id ]->send_request(msg, (void*)comp);
         /*
         if(replica_seq_id==0){
@@ -98,6 +99,9 @@ public:
         int ret=cct->client_for_slave->send_request(msg, (void*)comp);
 	return ret;
 >>>>>>> 0c2c0aa69725d34dcfa9e8afef05e129e5a213bb
+=======
+        (cct->asio_client_vec)[ replica_seq_id ]->send_request(msg, (void*)comp);
+>>>>>>> upstream/master
     }
     ssize_t backstore_aio_read( C_AioBackendCompletion *onfinish ){
         while( cct->backend_aio_read_count > 256 ){

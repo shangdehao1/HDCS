@@ -60,10 +60,13 @@ public:
 
     AsioListener *server;
     std::vector<AsioClient*> asio_client_vec;
+<<<<<<< HEAD
     /*
     AsioClient *client_for_slave;
     AsioClient *client_for_slave_1;
     */
+=======
+>>>>>>> upstream/master
     bool process_mode;
     bool if_master;
     std::string log_path;
@@ -111,6 +114,9 @@ public:
             server = new AsioListener( port, &request_queue );
             if( if_master ){
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> upstream/master
                 //  according to replication amounts, generating AsioClient objects. 
                 //  one AsioClient represent one communication between master and slave.
                 int replica_num=std::stoi(config->configValues["replication_num"]);
@@ -120,6 +126,7 @@ public:
                     AsioClient* client_for_slave=new AsioClient( ip_vec[i], port_vec[i] );
                     asio_client_vec.push_back(client_for_slave);
                 }
+<<<<<<< HEAD
                 /*
                 std::string target_ip = config->configValues["slave_ip"];
                 std::string target_port = config->configValues["slave_messenger_port"];
@@ -133,6 +140,8 @@ public:
                 std::string target_port_1 = config->configValues["slave_messenger_port_1"];
                 client_for_slave_1 = new AsioClient( target_ip_1, target_port_1 );
                 */
+=======
+>>>>>>> upstream/master
             }
         }
         //TODO(yuan): disable admin socket for temporarily until we fix
@@ -150,10 +159,13 @@ public:
                 for(int i=0; i<asio_client_vec.size(); i++){
                     delete asio_client_vec[i];
                 }
+<<<<<<< HEAD
                 /*
                 delete client_for_slave;
                 delete client_for_slave_1;
                 */
+=======
+>>>>>>> upstream/master
             }
         }
         //TODO: should call cache_entry destruction

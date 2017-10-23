@@ -5,6 +5,9 @@
 #include <string>
 #include <vector>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> upstream/master
 #include <sstream>
 
 =======
@@ -29,6 +32,7 @@ class Config{
 public:
     typedef std::map<std::string, std::string> ConfigInfo;
     ConfigInfo configValues{
+<<<<<<< HEAD
         {"master_ip",  "10.77.77.126"},
         {"messenger_port",  "8081"},
         {"replication_num", "1"},  // default amount of replication.          
@@ -41,6 +45,11 @@ public:
 =======
         {"messenger_port",  "9090"},
 >>>>>>> 0c2c0aa69725d34dcfa9e8afef05e129e5a213bb
+=======
+        {"master_ip",  "127.0.0.1"},
+        {"messenger_port",  "9090"},
+        {"replication_num", "3"},  // default amount of replication.          
+>>>>>>> upstream/master
         {"enable_MemoryUsageTracker","false"},
         {"cache_dir","/mnt/hyperstash_0/"},
         {"object_size","4096"},
