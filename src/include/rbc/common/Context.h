@@ -59,10 +59,6 @@ public:
 
     AsioListener *server;
     std::vector<AsioClient*> asio_client_vec;
-    /*
-    AsioClient *client_for_slave;
-    AsioClient *client_for_slave_1;
-    */
     bool process_mode;
     bool if_master;
     std::string log_path;
@@ -113,15 +109,6 @@ public:
                     AsioClient* client_for_slave=new AsioClient( ip_vec[i], port_vec[i] );
                     asio_client_vec.push_back(client_for_slave);
                 }
-                /*
-                std::string target_ip = config->configValues["slave_ip"];
-                std::string target_port = config->configValues["slave_messenger_port"];
-                client_for_slave = new AsioClient( target_ip, target_port ); 
-                // 3 replication
-                std::string target_ip_1 = config->configValues["slave_ip_1"];
-                std::string target_port_1 = config->configValues["slave_messenger_port_1"];
-                client_for_slave_1 = new AsioClient( target_ip_1, target_port_1 );
-                */
             }
         }
         //TODO(yuan): disable admin socket for temporarily until we fix
@@ -139,10 +126,6 @@ public:
                 for(int i=0; i<asio_client_vec.size(); i++){
                     delete asio_client_vec[i];
                 }
-                /*
-                delete client_for_slave;
-                delete client_for_slave_1;
-                */
             }
         }
         //TODO: should call cache_entry destruction
