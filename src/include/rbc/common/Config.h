@@ -25,6 +25,7 @@ class Config{
 public:
     typedef std::map<std::string, std::string> ConfigInfo;
     ConfigInfo configValues{
+<<<<<<< HEAD
         {"master_ip",  "10.77.77.126"},
         {"messenger_port",  "8081"},
         {"replication_num", "1"},  // default amount of replication.          
@@ -33,6 +34,11 @@ public:
         {"slave_ip_1", "192.168.5.12"},
         {"slave_messenger_port_1","9091"},
         */
+=======
+        {"master_ip",  "127.0.0.1"},
+        {"messenger_port",  "9090"},
+        {"replication_num", "3"},  // default amount of replication.          
+>>>>>>> origin/clean_branch
         {"enable_MemoryUsageTracker","false"},
         {"cache_dir","/mnt/hyperstash_0/"},
         {"object_size","4096"},

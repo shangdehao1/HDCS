@@ -182,6 +182,7 @@ int CacheService::do_write_op( Op *op ){
         int replica_num = std::stoi(cct->config->configValues["replication_num"]);
         for( int i=0; i<replica_num-1; i++){
             Op* replica_op = new Op(cct, op->image_name, op->offset,
+<<<<<<< HEAD
                             op->data, op->length, cct->mempool, op->req );
             C_AioReplicationCompletion *onfinish = new C_AioReplicationCompletion(replica_op);
             replica_op->replica_aio_write((AioCompletion*)onfinish, i);
@@ -198,6 +199,13 @@ int CacheService::do_write_op( Op *op ){
         C_AioReplicationCompletion *onfinish_1 = new C_AioReplicationCompletion(replica_op_1); 
         replica_op_1->replica_aio_write((AioCompletion*)onfinish_1,1);
         */
+=======
+                            op->data, op->length, cct->mempool, op->req );
+            C_AioReplicationCompletion *onfinish = new C_AioReplicationCompletion(replica_op);
+            replica_op->replica_aio_write((AioCompletion*)onfinish, i);
+
+        }
+>>>>>>> origin/clean_branch
     }
 
     std::string oid_string = get_index( op->image_name, op->offset );
