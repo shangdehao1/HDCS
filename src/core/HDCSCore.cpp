@@ -67,7 +67,7 @@ HDCSCore::HDCSCore(std::string name, std::string config_name) {
 
   //connect to its replication_nodes
   if (config->configValues["role"].compare(std::string("hdcs_master")) == 0) {
-    connect_to_replica(name);
+    //connect_to_replica(name);
   }
 }
 
@@ -184,6 +184,7 @@ void HDCSCore::aio_write (char* data, uint64_t offset, uint64_t length,  void* a
 }
 
 void HDCSCore::connect_to_replica (std::string name) {
+  std::cout<<"============================connect_to_replica============================="<<std::endl;
   std::string addr;
   std::string port;
   int colon_pos, last_pos;
@@ -206,7 +207,10 @@ void HDCSCore::connect_to_replica (std::string name) {
 
     io_ctx = (hdcs_ioctx_t*)malloc(sizeof(hdcs_ioctx_t));
     replication_core_map[addr_port_str] = (void*)io_ctx;
-    io_ctx->conn = new Connection([](void* p, std::string s){client::request_handler(p, s);});
+    /* param 2: io_service number in io_pool.
+       param 3: thread number at one io_service.
+    */
+    io_ctx->conn = new hdcs::networking::Connection(([](void* p, std::string s){client::request_handler(p, s);}), 5, 5);
     io_ctx->conn->connect(addr, port);
     io_ctx->conn->set_session_arg((void*)io_ctx);
 
