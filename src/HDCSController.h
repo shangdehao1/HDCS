@@ -3,7 +3,7 @@
 #define HDCS_CONTROLLER_H
 
 #include "common/Config.h"
-#include "Network/server.h"
+#include "Network/hdcs_networking.h"
 #include "core/HDCSCore.h"
 
 namespace hdcs {
@@ -14,7 +14,7 @@ namespace hdcs {
     void handle_request(void* session_id, std::string msg_content);
   private:
     Config *config;
-    server *network_service;
+    networking::server *network_service;
     std::map<std::string, core::HDCSCore*> hdcs_core_map;
     std::mutex hdcs_core_map_mutex;
   };

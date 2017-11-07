@@ -1,205 +1,240 @@
-#include <algorithm>
-#include <iostream>
-#include <list>
-#include <string>
+#ifndef CLIENT 
+#define CLIENT 
 #include <mutex>
-#include <assert.h>
-#include <vector>
-#include <memory>
+#include <string>
 #include <thread>
-#include <boost/asio/steady_timer.hpp>
-#include "io_pool.h"
-#include "common/C_AioRequestCompletion.h"
-#include "Network/Message.h"
+#include <map>
+#include <vector>
+#include <atomic>
+#include <memory>
+#include <atomic>
+#include "connect.h"
 
-ssize_t request_handler(char msg_content[]);
-
-class session
-{
-public:
-    session(boost::asio::io_service& ios)
-        : io_service_(ios),
-        socket_(ios),
-        counts(0),
-        buffer_(new char[sizeof(uint64_t)]) {}
-
-    ~session() {
-        delete[] buffer_;
-    }
-
-    void aio_write(std::string send_buffer) {
-      Message msg(send_buffer);
-      boost::asio::async_write(socket_, boost::asio::buffer(msg.to_buffer()),
-        [this](const boost::system::error_code& err, uint64_t cb) {
-        if (!err) {
-          counts++;
-          read();
-        } else {
-        }
-      });
-    }
-
-    void write(std::string send_buffer) {
-      Message msg(send_buffer);
-      boost::asio::write(socket_,  boost::asio::buffer(msg.to_buffer()));
-    }
-
-    void aio_read() {
-      boost::asio::async_read(socket_, boost::asio::buffer(buffer_, sizeof(MsgHeader)),
-        [this](const boost::system::error_code& err, uint64_t exact_read_bytes) {
-        if (!err) {
-          counts--;
-          assert(exact_read_bytes == sizeof(MsgHeader));
-          uint64_t content_size = ((MsgHeader*)buffer_)->get_data_size();
-          //printf("client about to receive ack, size is %lu\n", content_size);
-          char* data_buffer = (char*)malloc(content_size);
-          exact_read_bytes = socket_.read_some(boost::asio::buffer(data_buffer, content_size));
-          if (exact_read_bytes == content_size) {
-            request_handler(data_buffer); 
-            free(data_buffer);
-          } else {
-            printf("client received bytes : %lu, less than expected %lu bytes\n", exact_read_bytes, content_size);
-          }
-        } else {
-        }
-      });
-    }
-
-    ssize_t read() {
-      //printf("client session %p about to receive header\n", this);
-      ssize_t exact_read_bytes = socket_.read_some(boost::asio::buffer(buffer_, sizeof(MsgHeader)));
-      ssize_t ret = 0;
-      counts--;
-      assert(exact_read_bytes == sizeof(MsgHeader));
-      uint64_t content_size = ((MsgHeader*)buffer_)->get_data_size();
-      //printf("client session %p about to receive ack, size is %lu\n", this, content_size);
-      char* data_buffer = (char*)malloc(content_size);
-      exact_read_bytes = socket_.read_some(boost::asio::buffer(data_buffer, content_size));
-      //printf("client session %p received content\n", this);
-      if (exact_read_bytes == content_size) {
-        ret = request_handler(data_buffer); 
-        free(data_buffer);
-      }
-      return ret;
-    }
-
-    void start(boost::asio::ip::tcp::endpoint endpoint) {
-        socket_.connect(endpoint);
-        boost::asio::ip::tcp::no_delay no_delay(true);
-        socket_.set_option(no_delay);
-    }
-
-    void stop() {
-        uint64_t tmp;
-        int retry = 0;
-        while(counts > 0 && retry < 1){
-          tmp = counts;
-          printf("session %p still has %lu inflight ios\n", this, tmp);
-          sleep(1);
-          retry++;
-        }
-        io_service_.post([this]() {
-            socket_.close();
-            printf("session %p closed\n", this);
-        });
-    }
-
+namespace hdcs{
+namespace networking{
+class Client{   
 private:
-    boost::asio::io_service& io_service_;
-    boost::asio::ip::tcp::socket socket_;
-    uint64_t block_size_;
-    char* buffer_;
-    std::atomic<uint64_t> counts;
-};
 
-class Connection {
+    std::vector<SessionPtr> session_vec;
+    std::atomic<int> session_index;
+    std::atomic<bool> is_closed;
+    Connect connect;
+    ProcessMsgClient process_msg;
+    int session_num;
+    std::mutex receive_lock;
+    bool is_begin_aio;
 public:
-    Connection()
-        : thread_count_(8), s_id(0), session_count(8){
-        io_services_.resize(thread_count_);
-        io_works_.resize(thread_count_);
-        threads_.resize(thread_count_);
 
-        for (auto i = 0; i < thread_count_; ++i) {
-            io_services_[i].reset(new boost::asio::io_service);
-            io_works_[i].reset(new boost::asio::io_service::work(*io_services_[i]));
-            threads_[i].reset(new std::thread([this, i]() {
-                auto& io_service = *io_services_[i];
-                //io_service.run();
-                try {
-                    io_service.run();
-                } catch (std::exception& e) {
-                    std::cerr << "Exception: " << e.what() << "\n";
-                    close();
-                }
-            }));
-        }
+    Client( ProcessMsgClient _process_msg , int _s_num, int _thd_num)
+        : session_index(0)
+        , session_num(_s_num)
+        , process_msg(_process_msg)
+        , is_begin_aio(false)
+        , connect(_s_num, _thd_num)
+        , is_closed(true)
+    {}
 
-        resolver_.reset(new boost::asio::ip::tcp::resolver(*io_services_[0]));
-        for (size_t i = 0; i < session_count; ++i)
-        {
-            auto& io_service = *io_services_[i % thread_count_];
-            std::unique_ptr<session> new_session(new session(io_service));
-            sessions_.emplace_back(std::move(new_session));
-        }
-    }
-
-    ~Connection() {
-        for (auto& io_work : io_works_) {
-            io_work.reset();
+    ~Client(){
+        if(!is_closed.load()){
+            close();
         }
     }
 
     void close() {
-        for (auto& session : sessions_) {
-          session->stop();
+        for(int i = 0 ; i < session_vec.size(); ++i){
+            session_vec[i]->close();
+            delete session_vec[i];
         }
+        is_closed.store(true);
     }
 
-    void connect( std::string host, std::string port ) {
-        boost::asio::ip::tcp::resolver::iterator iter =
-            resolver_->resolve(boost::asio::ip::tcp::resolver::query(host, port));
-        endpoint_ = *iter;
-        start();
-    }
-
-    void start() {
-        for (auto& session : sessions_) {
-            session->start(endpoint_);
+    void cancel(){
+        for(int i = 0; i < session_vec.size(); ++i){
+            session_vec[i]->cancel();
         }
+        sleep(1);
     }
 
-    void wait() {
-        for (auto& thread : threads_) {
-            thread->join();
+    int sync_connect( std::string ip_address, std::string port){
+        SessionPtr new_session;
+        for(int i=0; i < session_num; i++){
+            new_session = connect.sync_connect( ip_address, port );
+            if(new_session != NULL){
+                //std::cout<<"Networking::Client::sync_connect successed. Session ID is : "<<
+                 //   new_session<<std::endl;
+                session_vec.push_back( new_session );
+            }else{
+                std::cout<<"Client::sync_connect failed.."<<std::endl;
+            }
         }
-    }
-
-    int aio_communicate(std::string send_buffer) {
-        sessions_[s_id]->aio_write(send_buffer);
-        if (++s_id >= session_count) s_id = 0;
+        if( session_vec.size() == session_num ){
+            std::cout<<"Networking: "<<session_vec.size()<<" sessions have been created..."<<std::endl;
+            is_closed.store(true);
+        }else{
+            assert(0);
+        }
         return 0;
     }
 
-    ssize_t communicate(std::string send_buffer) {
-      ssize_t ret = 0;
-      sessions_[s_id]->write(send_buffer);
-      ret = sessions_[s_id]->read();
-      if (++s_id >= session_count) s_id = 0;
-      return ret;
+    // namely, Communicate of HDCS
+    ssize_t sync_process( std::string send_buffer){
+        ssize_t ret;
+        ret = session_vec[session_index]->sync_send(send_buffer);
+        if( ret < 0 ){
+            std::cout<<"Client::sync_process: sync_send failed. "<<std::endl;
+            assert(0);
+            return -1;
+        }
+        // use "response" to return received msg.
+        char* response; 
+        ret = session_vec[session_index]->sync_receive( response );
+        if(ret<0){
+            std::cout<<"Client::sync_process: sync_receive failed. "<<std::endl;
+            assert(0);
+            return -1;
+        }
+        // namely, execute handle_request of HDCS.
+        ret=process_msg( response );
+
+        delete[] response;
+
+        if(++session_index >= session_vec.size()){
+            session_index = 0;
+        }
+        return ret;
+    }
+
+    // namely, aio_communicate of HDCS
+    int async_process( std::string send_buffer ){
+
+        std::shared_ptr<aio_complete> onfinish(new aio_client_send_complete(
+                    this, session_vec[session_index], &Client::on_send_handle));
+
+        //select_idle_session()->async_send( send_buffer, onfinish );
+        session_vec[session_index]->async_send( send_buffer, onfinish );
+        if(++session_index==session_vec.size()){
+            session_index = 0;
+        }
+        return 0;
+    }
+
+    ssize_t communicate(std::string& send_buffer){
+        if(is_begin_aio){
+           cancel();
+           is_begin_aio = false;
+        }
+        return sync_process(send_buffer);
+    }
+
+   //receive loop called by construction. 
+   void aio_receive( ProcessMsgClient _process_msg ){
+       for( int i=0; i<session_vec.size(); i++){
+	   session_vec[i]->aio_receive(_process_msg);
+       }
+   }
+
+   // just call async_send of session.
+    void aio_communicate(std::string& send_buffer){
+        if(!is_begin_aio){
+           aio_receive( process_msg );
+           is_begin_aio=true;
+	}
+        session_vec[session_index]->aio_communicate( send_buffer );
+        if(++session_index==session_vec.size()){
+            session_index = 0;
+        }
     }
 
 private:
-    std::atomic<int> s_id;
-    int const thread_count_;
-    int const session_count;
-    std::vector<std::unique_ptr<boost::asio::io_service>> io_services_;
-    std::vector<std::unique_ptr<boost::asio::io_service::work>> io_works_;
-    std::unique_ptr<boost::asio::ip::tcp::resolver> resolver_;
-    std::vector<std::unique_ptr<std::thread>> threads_;
-    std::vector<std::unique_ptr<session>> sessions_;
-    boost::asio::ip::tcp::endpoint endpoint_;
+
+    // callback function of session->async_send().
+    void on_send_handle(int error_code, SessionPtr session_id, void* arg){
+        if( !error_code ){
+            std::shared_ptr<aio_complete> onfinish(new aio_client_receive_complete(
+                    this, session_id, &Client::on_receive_handle));
+            receive_lock.lock();
+            char* msg;
+            // receive ack/answer from server.
+            session_id->async_receive(msg, onfinish);
+        }else{
+            std::cout<<"client::on_send_handle, async_send failed.."<<std::endl;
+            assert(0);
+        }
+    }
+
+    // callback function of session->async_receive().
+    void on_receive_handle(int error_code, Session* session_id, char* msg, uint64_t _byte_num){
+        receive_lock.unlock();
+        if(!error_code){
+            // namely, handle_request of HDCS.
+            process_msg( msg );
+            delete[] msg;
+            //session_id->set_idle();
+        }else{
+            std::cout<<"client::on_receive_handle, async_receive failed.."<<std::endl;
+            assert(0);
+        }
+    }
+
+    Session* select_idle_session(){
+        while(true){
+            for( int i = 0; i<session_vec.size(); i++){
+                if(!(session_vec[i]->if_busy())){
+                    std::cout<<"select session id is "<<i<<std::endl;
+                    session_vec[i]->set_busy();
+                    return session_vec[i];
+                }
+            }
+        }
+    }
+
 };
 
 
 
+class Connection {
+public:
+    Connection( ProcessMsgClient task, int s_num, int thd_num )
+        :connection_impl(task, s_num, thd_num){
+    }
+
+    ~Connection(){
+    }
+
+    void close(){
+       connection_impl.close();
+    }
+
+    void start(){
+    }
+
+    void wait(){
+    }
+
+    void connect(std::string ip, std::string port){
+        connection_impl.sync_connect(ip, port);
+    }
+
+    void set_session_arg( ){
+        //connction_impl.set_session_arg();
+    }
+
+    int aio_communicate( std::string send_buffer ){
+        //connection_impl.async_process( send_buffer ); // implement 1
+        connection_impl.aio_communicate(send_buffer);   // implement 2
+        return 1;
+    }
+
+    ssize_t communicate( std::string send_buffer ){
+        //connection_impl.async_process( send_buffer );  // implement 1
+        return connection_impl.communicate(send_buffer); // implement 2
+    }
+
+private:
+    Client connection_impl;
+    
+}; // connection
+
+} //hdcs
+}
+#endif

@@ -42,6 +42,7 @@ HDCSCore::HDCSCore(std::string name) {
 
   if (cache_policy_mode) {
 #if defined(CACHE_POLICY)
+    
     uint64_t cache_size = stoull(config->configValues["cache_total_size"]);
     float cache_ratio_health = stof(config->configValues["cache_ratio_health"]);
     uint64_t timeout_nanosecond = stoull(config->configValues["cache_dirty_timeout_nanoseconds"]);

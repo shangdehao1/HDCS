@@ -14,9 +14,13 @@ HDCSController::HDCSController() {
 	  if(log_fd==NULL){}
     if(-1==dup2(fileno(log_fd), STDERR_FILENO)){}
   }
-  network_service = new server(64, "0.0.0.0", "9000");
+  //network_service = new networking::server(64, "0.0.0.0", "9000");
+  // param 1: port num
+  // param 2: session number  
+  // param 3: thread number of one session.
+  network_service = new networking::server(9000,5,5);
   network_service->start([&](void* p, std::string s){handle_request(p, s);});
-  network_service->wait();
+  network_service->run();
 }
 
 HDCSController::~HDCSController() {
@@ -40,6 +44,7 @@ void HDCSController::handle_request(void* session_id, std::string msg_content) {
       auto it = hdcs_core_map.find(name);
       if (it == hdcs_core_map.end()) {
         core::HDCSCore* core_inst = new core::HDCSCore(name);
+        printf("\nHDCSController created a new HDCS Core Instance!!!!\n");
         auto ret = hdcs_core_map.insert(std::pair<std::string, core::HDCSCore*>(name, core_inst));
         assert (ret.second);
         it = ret.first;
@@ -49,7 +54,7 @@ void HDCSController::handle_request(void* session_id, std::string msg_content) {
       io_ctx->type = HDCS_CONNECT_REPLY;
       io_ctx->hdcs_inst = (void*)hdcs_inst;
       io_ctx->length = 0;
-      network_service->send(session_id, std::move(std::string((char*)io_ctx, io_ctx->size())));
+      network_service->send(session_id, std::move(std::string((char*)io_ctx, io_ctx->size())), NULL); //
       break;
     }
     case HDCS_READ:
@@ -86,6 +91,7 @@ void HDCSController::handle_request(void* session_id, std::string msg_content) {
         network_service->send(session_id, std::move(std::string(msg_content.data(), msg_content.size())));
         free(aligned_data);
       });
+      //comp->complete(0);
       hdcs_inst->aio_write(aligned_data, io_ctx->offset, io_ctx->length, comp);
     }
       break;

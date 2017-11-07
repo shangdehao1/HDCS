@@ -29,7 +29,7 @@ COMMON_OBJECTS:= store/SimpleStore/SimpleBlockStore.o
 
 RBD_OBJECTS:= store/RBD/RBDImageStore.o 
 
-NETWORK_OBJECTS:= Network/io_pool.o
+#NETWORK_OBJECTS:= Network/common/io_pool.o
 
 HDCSCore_cache.oo : core/HDCSCore.cpp
 	${CXX} -c ${CXXFLAGS} -DCACHE_POLICY ${INCS} $< -o $@
@@ -56,7 +56,8 @@ $(DIST_LIB): core/policy/TierPolicy.o $(COMMON_OBJECTS) $(RBD_OBJECTS) $(TIER_CO
 endif
 
 ifeq ($(POLICY), ALL)
-$(CONTROLLER): HDCSController.o core/policy/CachePolicy.o core/policy/TierPolicy.o $(COMMON_OBJECTS) $(RBD_OBJECTS) $(NETWORK_OBJECTS) $(HDCS_CORE_OBJECTS)
+#$(CONTROLLER): HDCSController.o core/policy/CachePolicy.o core/policy/TierPolicy.o $(COMMON_OBJECTS) $(RBD_OBJECTS) $(NETWORK_OBJECTS) $(HDCS_CORE_OBJECTS)
+$(CONTROLLER): HDCSController.o core/policy/CachePolicy.o core/policy/TierPolicy.o $(COMMON_OBJECTS) $(RBD_OBJECTS) $ $(HDCS_CORE_OBJECTS)
 	${CXX} ${CXXFLAGS} ${INCS} HDCS.cpp -o $@ $^ ${PLATFORM_LDFLAGS}
 endif
 
@@ -68,7 +69,7 @@ $(TEST_TOOL):
 	${CXX} ${CXXFLAGS} ${INCS} test.c -o $@ $^ -Llib -lhdcs
 
 clean:
-	rm -rf common/*.o core/*.o core/*.oo store/SimpleStore/*.o store/RBD/*.o core/policy/*.o Network/*.o lib/libhdcs.so hdcs_test_tool HDCS
+	rm -rf HDCSController.o common/*.o core/*.o core/*.oo store/SimpleStore/*.o store/RBD/*.o core/policy/*.o Network/*.o lib/libhdcs.so hdcs_test_tool HDCS
 	rm -rf /usr/local/include/hdcs
 	rm -rf /usr/local/lib/libhdcs.so
 

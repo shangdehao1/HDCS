@@ -5,6 +5,7 @@
 #include "core/HDCSCore.h"
 
 using namespace hdcs;
+using namespace dslab;
 
 void hdcs_aio_release(hdcs_completion_t c){
   AioCompletion *comp = (C_AioRequestCompletion*) c;

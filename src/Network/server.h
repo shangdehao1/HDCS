@@ -1,131 +1,119 @@
-#include <algorithm>
-#include <iostream>
-#include <list>
-#include <string>
-#include <mutex>
-#include <assert.h>
+#ifndef DS_SERVER 
+#define DS_SERVER
+
+#include <sstream>
+#include <map>
 #include <vector>
-#include <memory>
-#include <queue>
-#include <stack>
 #include <thread>
-#include <future>
-#include "io_pool.h"
-#include "Message.h"
-#include "../HDCS_REQUEST_CTX.h"
+#include <atomic>
+#include "./common/session.h"
+#include "./common/networking_common.h"
+#include "acceptor.h"
 
-typedef std::function<void(void*, std::string)> callback_t;
+namespace hdcs{
+namespace networking{
 
-class session : public std::enable_shared_from_this<session>
-{
-public:
-    session(boost::asio::io_service& ios, callback_t cb)
-        : io_service_(ios)
-        , socket_(ios)
-        , cb(cb)  
-        , buffer_(new char[sizeof(MsgHeader)]) {
-    }
-
-    ~session() {
-        delete[] buffer_;
-    }
-
-    boost::asio::ip::tcp::socket& socket() {
-        return socket_;
-    }
-
-    void start() {
-        boost::asio::ip::tcp::no_delay no_delay(true);
-        socket_.set_option(no_delay);
-        aio_read();
-    }
-
-    void aio_write(std::string send_buffer) {
-      Message msg(send_buffer);
-      boost::asio::async_write(socket_, boost::asio::buffer(msg.to_buffer()),
-          [this, self = shared_from_this()](
-            const boost::system::error_code& err, size_t cb) {
-            if (!err) {
-            }
-      });
-    }
-
-    void aio_read() {
-      boost::asio::async_read(socket_, boost::asio::buffer(buffer_, sizeof(MsgHeader)),
-          [this, self = shared_from_this()](
-              const boost::system::error_code& err, size_t exact_read_bytes) {
-          if (!err) {
-            assert(exact_read_bytes == sizeof(MsgHeader));
-            uint64_t content_size = ((MsgHeader*)buffer_)->get_data_size();
-            char* data_buffer = (char*)malloc(content_size);
-            exact_read_bytes = socket_.read_some(boost::asio::buffer(data_buffer, content_size));
-            if (exact_read_bytes == content_size) {
-              cb((void*)this, std::move(std::string(data_buffer, content_size)));
-              free(data_buffer);
-              aio_read();
-            } else {
-              printf("received: %lu data, not finished yet\n", exact_read_bytes);
-            }
-          }
-      });
-    }
-
+class server{
 private:
-    boost::asio::io_service& io_service_;
-    boost::asio::ip::tcp::socket socket_;
-    char* buffer_;
-    callback_t cb;
-};
+    SessionSet session_set; 
+    std::unique_ptr<Acceptor> acceptor_ptr;
+    std::unique_ptr<std::thread> check_session_thread;
+    std::atomic<bool> is_stop;
+    short port_num;
 
-class server
-{
 public:
-  server(int thread_count, std::string host, std::string port)
-        : thread_count_(thread_count)
-        , service_pool_(thread_count)
-        , acceptor_(service_pool_.get_io_service()) {
-        auto endpoint = boost::asio::ip::tcp::endpoint(
-          boost::asio::ip::address::from_string(host), stoi(port));
-        acceptor_.open(endpoint.protocol());
-        acceptor_.set_option(boost::asio::ip::tcp::acceptor::reuse_address(1));
-        acceptor_.bind(endpoint);
-        acceptor_.listen();
+
+    server( short _port_num , int s_num = 10, int thd_num = 10): is_stop(false), port_num(_port_num){
+        acceptor_ptr.reset(new Acceptor( port_num, session_set , s_num, thd_num));
+        //check_session_thread.reset(new std::thread([this](){loop_check_session();}));
+        //check_session_thread->detach();
     }
 
-    void start(callback_t task) {
-        std::shared_ptr<session> new_session(new session(
-            service_pool_.get_io_service(), task));
-        auto& socket = new_session->socket();
-        acceptor_.async_accept(socket,
-            [this, new_session = std::move(new_session), task](
-                const boost::system::error_code& err) {
-            if (!err) {
-                new_session->start();
-                start(task);
-            }
-        });
+    ~server(){
+        stop();
     }
 
-    /*template<class F, class... Args>
-    auto start(F&& f, Args&&... args) {
-        //using return_type = typename std::result_of<F(Args...)>::type;
-        std::packaged_task<return_type> task(
-          std::bind(std::forward<F>(f), std::forward<Args>(args)...)
-        );
-        //std::future<void> ret = task->get_future();
-        start();
-        return;
-    }*/
-
-    void wait() {
-      service_pool_.run();
+    void stop(){
+        is_stop.store(true);
+        acceptor_ptr->close();
+        for(auto it=session_set.begin(); it!=session_set.end(); ++it){
+            (*it)->close(); 
+        }
     }
+
+    void run(){
+        acceptor_ptr->run();
+    }
+
+    // start listen 
+    bool start( ProcessMsg process_msg ){
+        acceptor_ptr->start( process_msg );
+    }
+
+    //this is async send, but hdcs use this interface name.
+    void send(void* session_id, std::string send_buffer, OnSentServer _callback=NULL){
+        //async_send_1(session_id, send_buffer, _callback); 
+        async_send_2(session_id, send_buffer);   
+    }
+    // implement 1
+    void async_send_1 (void* session_id, std::string send_buffer, OnSentServer _callback=NULL){
+        session_id = (Session*)session_id;
+        if(session_set.find((Session*)session_id)==session_set.end()){
+            std::cout<<"fails : find session_id. Maybe need to re-connction "<<std::endl;
+        }
+        std::shared_ptr<aio_complete> onfinish;
+        if( _callback==NULL){
+            onfinish.reset(new aio_server_send_complete(
+                        this, &server::on_sent_default, send_buffer.size()));
+        }else{
+            onfinish.reset(new aio_server_send_complete(_callback, send_buffer.size()));
+        }
+        ((Session*)session_id)->async_send(send_buffer, onfinish);
+    }
+    // implement 2 
+    void async_send_2(void* session_id, std::string send_buffer ){
+        session_id = (Session*)session_id;
+        if(session_set.find((Session*)session_id)==session_set.end()){
+            std::cout<<"Networking::server: finding session_id failed. Maybe need to re-connction "<<std::endl;
+        }
+        ((Session*)session_id)->async_send(send_buffer);
+    }
+
     
-    void send(void* session_id, std::string send_buffer) {
-      ((session*)session_id)->aio_write(send_buffer);
-    }
 private:
-    int const thread_count_;
-    io_service_pool service_pool_;
-    boost::asio::ip::tcp::acceptor acceptor_;    
-};
+
+    void on_sent_default(int error_code, uint64_t byte_num ,void* arg){
+        if(!error_code){
+        }else{
+            std::cout<<"server::on_sent_default: send failed. "<<std::endl;
+        }
+    }
+
+    void loop_check_session(){
+        while(!is_stop.load()){
+            for(auto it=session_set.begin(); it!=session_set.end(); ++it){
+                if( (!((*it)->if_session_work())) || ( (*it)->if_timeout()) ){
+                    std::cout<<"delete session, id is "<<(*it)<<std::endl;
+                    (*it)->close();
+                    session_set.erase(it);	
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::seconds(CHECK_SESSION_INTERVAL));
+        }
+    }
+
+}; 
+}
+}
+#endif
+/*
+    asio::error::operation_aborted  -1
+    asio::error::connection_aborted -2
+    asio::error::connection_reset -3
+    asio::error::bad_descriptor -4
+    asio::error::interrupted -5
+    asio::error::network_down -6
+    asio::error::not_connected -7
+    asio::error::shut_down -8
+
+*/

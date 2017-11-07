@@ -3,10 +3,12 @@
 
 #include <string>
 #include <sstream>
-
+namespace hdcs{
+namespace networking{
 struct MsgHeader {
+  const uint64_t msg_flag;
   uint64_t size;
-  MsgHeader(uint64_t size) : size(size) {}
+  MsgHeader(uint64_t size) : msg_flag(0xFFFFFFFFFFFFFFFF), size(size) {}
   uint64_t get_data_size() {
     return size;
   }
@@ -28,5 +30,6 @@ struct Message {
     return sizeof(MsgHeader) + header.get_data_size();
   }
 };
-
+}
+}
 #endif

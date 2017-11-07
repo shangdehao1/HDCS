@@ -1,11 +1,11 @@
 // Copyright [2017] <Intel>
 #include "include/libhdcs.h"
 #include "common/C_AioRequestCompletion.h"
-#include "Network/client.h"
+#include "Network/hdcs_networking.h" //
 #include "HDCS_REQUEST_CTX.h"
 
 struct hdcs_ioctx_t{
-  Connection* conn;
+  hdcs::networking::Connection* conn;
   void* hdcs_inst; 
 };
 
@@ -63,7 +63,7 @@ ssize_t hdcs_aio_get_return_value(hdcs_completion_t c) {
 int hdcs_open(void** io, char* name) {
   *io = malloc(sizeof(hdcs_ioctx_t));
   hdcs_ioctx_t* io_ctx = (hdcs_ioctx_t*)*io;
-  io_ctx->conn = new Connection();
+  io_ctx->conn = new hdcs::networking::Connection( request_handler, 15, 5 ); //
   hdcs::HDCS_REQUEST_CTX msg_content(HDCS_CONNECT, nullptr, nullptr, 0, strlen(name), name);
   io_ctx->conn->connect("127.0.0.1", "9000");
   ssize_t ret = io_ctx->conn->communicate(std::move(std::string(msg_content.data(), msg_content.size())));
