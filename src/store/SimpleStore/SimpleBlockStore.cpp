@@ -111,7 +111,9 @@ int SimpleBlockStore::block_read(uint64_t block_id, char* data) {
 }
 
 int SimpleBlockStore::block_discard(uint64_t block_id) {
-  int ret = ::fallocate(data_store_fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
+  // for Centos, can't recognize this macro. need to directly use 0x01 | 0x02
+  //int ret = ::fallocate(data_store_fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
+  int ret = ::fallocate(data_store_fd, 0x01 | 0x02,
                         block_id * block_size, block_size); 
   if (ret < 0) {
     log_err("[ERROR] SimpleBlockStore::block_discard, unable to discard block %lu, error: %s ", block_id, std::strerror(ret));

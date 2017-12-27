@@ -12,10 +12,8 @@ HDCSController::HDCSController(std::string name, std::string config_name): confi
 	  if(log_fd==NULL){}
     if(-1==dup2(fileno(log_fd), STDERR_FILENO)){}
   }
-  //network_service = new server(16, "0.0.0.0", config->configValues["local_port"]);
   network_service = new networking::server("0.0.0.0", config->configValues["local_port"], 16, 5);
   network_service->start([&](void* p, std::string s){handle_request(p, s);});
-  //network_service->wait();
   network_service->run();
 }
 
@@ -97,9 +95,11 @@ void HDCSController::handle_request(void* session_id, std::string msg_content) {
         network_service->send(session_id, std::move(std::string(msg_content.data(), msg_content.size())));
         free(aligned_data);
       });
-      //comp->complete(0);
+      comp->complete(0);
+      /*
       std::lock_guard<std::mutex> lock(hdcs_inst->core_lock);
       hdcs_inst->aio_write(aligned_data, io_ctx->offset, io_ctx->length, comp);
+      */
     }
       break;
     case HDCS_FLUSH:
