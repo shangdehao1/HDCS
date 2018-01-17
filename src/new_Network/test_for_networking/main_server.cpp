@@ -45,11 +45,6 @@ private:
     server* echo_server;
 };
 
-void handle_request(void* s_id, string receive_buffer){
-
-        string xx("this is a test program : i'm server "); 
-
-}
 
 
 void test_for_stop_interface(string ip_address, string port, int s_num, int thd_num){
@@ -73,19 +68,7 @@ int main(){
     //test_class test(ip_address, port_num, session_num, thd_num_of_one_ios);
     //test.sync_run();
     //
-
-    server echo_server("127.0.0.1", "6666", 1, 1);
-
-    echo_server.start( [](void* p, string s){ //
-        handle_request(p, s);
-        });
-
-
-    std::cout<<"main: sleep 10s"<<std::endl;
-    sleep(10);
-    echo_server.sync_run();
-
-    //test_for_stop_interface(ip_address, port_num, 1, 1);
+    test_for_stop_interface(ip_address, port_num, 1, 1);
 
     return 0;
 } 

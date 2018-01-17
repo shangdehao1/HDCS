@@ -91,7 +91,7 @@ public:
             while( (send_index-receive_index) > qd ){
                 cout<<"waiting....... "<<qd<<endl;
             }
-            echo_client->aio_communicate( std::move(send_buffer) );
+            echo_client->aio_communicate( send_buffer );
         }
         sleep(1);
         cout<<" ======async communicate over======="<<endl;

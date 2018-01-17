@@ -9,7 +9,7 @@
 #include "acceptor.h"
 #include "./asio_common/asio_acceptor.h"
 #include "server.h"
-//#include "connect.h"
+#include "connect.h"
 #include "client.h"
 //#define INFO
 #endif

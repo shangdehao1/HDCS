@@ -24,7 +24,6 @@ public:
     server(std::string _ip_address, std::string _port_num, int s_num=10, int thd_num=10): 
         is_stop(false){
         acceptor_ptr.reset(new Acceptor( _ip_address, _port_num, session_set , s_num, thd_num));
-        std::cout<<"server construction success.."<<std::endl;
     }
 
     ~server(){
@@ -53,7 +52,6 @@ public:
 
     // start listen 
     bool start( ProcessMsg process_msg ){
-        std::cout<<"server-->start..."<<std::endl;
         acceptor_ptr->start( process_msg );
     }
 
