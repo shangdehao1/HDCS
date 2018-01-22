@@ -36,14 +36,14 @@ private:
     int counts;
     bool is_closed;
     int role;
-    void* callback_arg;
+    void* process_msg_arg_client;
     std::mutex send_lock;
     std::mutex receive_lock;
     ProcessMsgClient c_process_msg;
     ProcessMsg s_process_msg;
     std::atomic<bool> async_receive_loop;
     std::mutex async_receive_loop_mutex;
-    std::map<uint64_t,MsgController*> pending_msg_map; 
+    std::map<uint64_t, MsgController*> pending_msg_map; 
     enum {
         STATUS_INIT = 0,
         STATUS_CONNECTING = 1,
@@ -81,8 +81,14 @@ public:
         delete[] msg_header;
     }
     
-    void set_callback_arg(void* _arg){
-        callback_arg = _arg;
+    void set_process_msg_arg_client(void *_arg)
+    {
+        process_msg_arg_client = _arg;
+    }
+
+    void set_process_msg_client(ProcessMsgClient _p_m)
+    {
+        c_process_msg = _p_m;
     }
 
     int set_socket_option(){
@@ -139,7 +145,7 @@ public:
        	s_process_msg = _process_msg;
     }
 
-    int sync_connection(std::string ip_address, std::string port, ProcessMsgClient _process_msg){
+    int sync_connection(std::string ip_address, std::string port){
         _status = STATUS_CONNECTING;
         boost::system::error_code ec;
         boost::asio::ip::tcp::resolver::iterator iter =
@@ -163,7 +169,6 @@ public:
             assert(0);
         }
         is_closed = false; 
-        c_process_msg = _process_msg; 
         aio_receive();
         async_receive_loop.store(true);
         return 0;
@@ -260,8 +265,8 @@ public:
             delete[] receive_buffer;
             return -1;
         }
-        c_process_msg(callback_arg, std::move(std::string(receive_buffer, content_size)));
-	//thread_worker.post(boost::bind(c_process_msg, callback_arg, std::move(std::string(data_buffer,content_size))));
+        c_process_msg(process_msg_arg_client, std::move(std::string(receive_buffer, content_size)));
+	//thread_worker.post(boost::bind(c_process_msg, process_msg_arg_client, std::move(std::string(data_buffer,content_size))));
         delete[] receive_buffer;
         return 0;
    }
@@ -321,14 +326,14 @@ public:
                                 aio_receive();
 
                                 //trigger request handler first
-				c_process_msg(callback_arg, std::move(std::string(data_buffer, content_size)));
+				c_process_msg(process_msg_arg_client, std::move(std::string(data_buffer, content_size)));
                                 if(pending_msg_map.size()!=0){
                                     // lock? TODO
                                     pending_msg_map[sequence_id]->Done();
                                     delete pending_msg_map[sequence_id];
                                     pending_msg_map.erase(sequence_id);
                                 }
-				//thread_worker.post(boost::bind(c_process_msg, callback_arg, std::move(std::string(data_buffer,content_size))));
+				//thread_worker.post(boost::bind(c_process_msg, process_msg_arg_client, std::move(std::string(data_buffer,content_size))));
                             }else{   
                                 error_handing("asio_messenger::aio_receive: receiving content failed", err);
                             }

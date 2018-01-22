@@ -11,14 +11,16 @@ public:
     enum COMMUNICATION_TYPR{
         TCP_CONN = 0,
         RDMA_CONN = 1,
+        // TODO share memory or domain socket.
         // LOCAL_CONN,
     };
+
     Session(){}
     virtual ~Session(){}
     virtual bool start( ProcessMsg )=0;
     virtual void stop()=0;
     virtual void cancel()=0;
-    virtual void set_session_arg(void*)=0;
+    //virtual void set_session_arg(void*)=0;
     virtual int async_send( std::string, uint64_t )=0;
     virtual bool if_timeout()=0;
     virtual void set_option()=0;

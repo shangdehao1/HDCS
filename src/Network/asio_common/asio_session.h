@@ -21,8 +21,8 @@ private:
     SessionArg* session_arg_ptr;
 
 public:
-    asio_session( IOService& _io_service , int _role) 
-        : m_messenger(new asio_messenger( _io_service, _role ))
+    asio_session( IOService& _io_service, int _role) 
+        : m_messenger(new asio_messenger(_io_service, _role))
         , role(_role) 
         , session_arg_ptr(NULL) 
     {}
@@ -33,6 +33,9 @@ public:
             delete session_arg_ptr;
         }
     }
+
+    //void set_session_arg(void* xx){
+    //}
 
     void stop(){
         m_messenger->close();
@@ -47,8 +50,14 @@ public:
         m_messenger->set_socket_option();
     }       
 
-    void set_session_arg(void* _arg){
-        m_messenger->set_callback_arg(_arg);
+    void set_process_msg_client(ProcessMsgClient _p_m)
+    {
+        m_messenger->set_process_msg_client(_p_m);
+    }
+
+    void set_process_msg_arg_client(void* _arg)
+    {
+        m_messenger->set_process_msg_arg_client(_arg);
     }
 
     bool start( ProcessMsg _process_msg ){
@@ -58,8 +67,8 @@ public:
         return true;
     }
 
-    int sync_connection( std::string ip_address, std::string port, ProcessMsgClient _process_msg){
-        return m_messenger->sync_connection(ip_address, port, _process_msg);
+    int sync_connection( std::string ip_address, std::string port){
+        return m_messenger->sync_connection(ip_address, port);
     }
    
     int async_connection(){

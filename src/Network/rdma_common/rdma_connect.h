@@ -8,45 +8,57 @@
 #include <boost/system/error_code.hpp>
 
 #include "rdma_messenger/RDMAClient.h"
-
 #include "rdma_session.h"
 #include "rdma_internal_callback.h"
 #include "../common/Message.h"
 #include "../common/wait_event.h"
 #include "../common/networking_common.h"
 #include "../common/counter.h"
-
+#include "../common/option.h"
 
 // wraper of rdma_messenger --sdh
-//
 namespace hdcs{
 namespace networking{
 
 class RDMAConnect{
 public:
-    RDMAConnect()
+    RDMAConnect(const ClientOptions& _co )
         : new_session(NULL)
+        , client_options(_co)
+        , rdma_client_ptr(NULL)
+        , internal_on_connection_ptr(NULL)
+        , internal_process_msg_ptr(NULL)
     {
-
         hints.ai_family = AF_INET;
         hints.ai_socktype = SOCK_STREAM;
         hints.ai_flags = 0;
         hints.ai_protocol = 0;   
-        rdma_client_NULL = true;
         //std::cout<<"RDMAConnect construction success...."<<std::endl;
     }
 
-    ~RDMAConnect(){}
+    ~RDMAConnect()
+    {
+        close();
+        rdma_client_ptr.reset();
+        internal_on_connection_ptr.reset();
+        internal_process_msg_ptr.reset();
+    }
 
-    SessionPtr connect(std::string ip_address, std::string port_num, ProcessMsg _process_msg){
-        if(rdma_client_NULL){
+    void close(){
+       // TODO close RDMAClient
+    }
+
+    SessionPtr sync_connect(std::string ip_address, std::string port_num)
+    {
+        if(rdma_client_ptr == NULL)
+        {
             std::cout<<"create RDMAClient...."<<std::endl;
             to_rdma_address(ip_address, port_num);
             rdma_client_ptr.reset(new RDMAClient(res->ai_addr, 10));
             internal_on_connection_ptr.reset(new InternalOnConnection(new_session, wait_event));
-            internal_process_msg_ptr.reset(new InternalProcessMsg(_process_msg, 1));
+            internal_process_msg_ptr.reset(new InternalProcessMsg(client_options._process_msg, 1));
+            internal_process_msg_ptr->set_hdcs_arg(client_options._process_msg_arg);
             internal_on_connection_ptr->set_process_msg(internal_process_msg_ptr);
-            rdma_client_NULL = false;
             std::cout<<"create RDMAClient over...."<<std::endl;
         }
         std::cout<<"rdmaconnect: connect begin...."<<std::endl;
@@ -56,14 +68,6 @@ public:
         // default connection success
         return new_session;
     }  
-
-    void close(){
-       // TODO close RDMAClient
-    }
-
-    void set_hdcs_arg(void* arg){
-        internal_process_msg_ptr->set_hdcs_arg(arg);
-    }
 
 private:
     int to_rdma_address(std::string ip_address, std::string port_num ){
@@ -79,11 +83,11 @@ private:
     struct addrinfo hints;
     WaitEvent wait_event;
     SessionPtr new_session;
-    bool rdma_client_NULL;
+    const ClientOptions& client_options;
   
-};
+}; //RDMAConnect
 
-}
-}
+} // namespace networking
+} // namespace hdcs
 
 #endif

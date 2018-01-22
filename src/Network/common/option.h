@@ -8,14 +8,15 @@ namespace hdcs{
 namespace networking{
 
 enum COMMUNICATION_TYPE{
-    TCP_COMMUNICAYION,
-    RDMA_COMMUNICATION,
-    TCP_AND_RDMA_COMMUNICATION,
+    TCP_COMMUNICATION = 0,
+    RDMA_COMMUNICATION = 1,
+    LOCAL_COMMUNICATION = 2, // TODO for domain socket or share memory
 };
 
 struct ClientOptions{
+    // default: _io_service num is equal to _session_num
     int _io_service_num;
-    int _session_num; // default: _io_service_num is equal to _session_num.
+    int _session_num; 
     int _thd_num_on_one_session;
     // for example: 
     //     server 1: ip: 192.168.3.1 port 6666 TCP
@@ -33,8 +34,11 @@ struct ClientOptions{
     std::vector<std::string> _ip_address_vec;
     std::vector<std::string> _port_num_vec;
     std::vector<COMMUNICATION_TYPE> _communication_type_vec;
+    // namely, client's hdcs_handle_request
+    ProcessMsgClient _process_msg; 
+    void* _process_msg_arg;
 
-    ProcessMsgClient _process_msg; // namely: client's hdcs_handle_request
+    // TODO send_buffer/receive_buffer
 
 };
 
@@ -45,9 +49,8 @@ struct ServerOptions{
 
     std::vector<std::string> _port_num_vec;
     std::vector<COMMUNICATION_TYPE> _communication_type_vec;
-
-    ProcessMsg _process_msg; // namely: server's hdcs_handle_request
-
+    // namely, server's hdcs_handle_request
+    ProcessMsg _process_msg; 
 };
 
 }// namespace networking 

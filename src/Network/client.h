@@ -16,88 +16,99 @@
 
 namespace hdcs{
 namespace networking{
+
 class Connection{   
 private:
-
     std::vector<SessionPtr> session_vec;
     std::atomic<int> session_index;
     std::atomic<bool> is_closed;
-    Connect m_connect;
-    ProcessMsgClient process_msg;
-    void* process_msg_arg;
-    int session_num;
+    std::shared_ptr<Connect> connector_ptr;
     std::mutex session_index_lock;
     AtomicCounter64 _next_sequence_id; // free lock counter
-public:
+    ClientOptions client_options;    
 
-    Connection( ProcessMsgClient _process_msg , int _s_num, int _thd_num)
+public:
+    // default: just support TCP communication
+    Connection(ProcessMsgClient _process_msg , void* _p_m_param, int _s_num, int _thd_num)
         : session_index(0)
-        , session_num(_s_num)
-        , process_msg(_process_msg)
-        , m_connect(_s_num, _thd_num)
         , _next_sequence_id(0)
         , is_closed(false)
-    {}
+    {
+        client_options._process_msg = _process_msg;
+        client_options._process_msg_arg = _p_m_param;
+        client_options._io_service_num =  _s_num;
+        client_options._session_num = _s_num;
+        client_options._thd_num_on_one_session = _thd_num;
+        // create connector
+        connector_ptr.reset(new Connect(client_options));
+    }
 
-    ~Connection(){
+    Connection(const ClientOptions& _co)
+    {
+        client_options._process_msg = _co._process_msg;
+        client_options._process_msg_arg = _co._process_msg_arg;
+        client_options._io_service_num = _co._io_service_num;
+        client_options._session_num = _co._session_num;
+        client_options._thd_num_on_one_session = _co._thd_num_on_one_session;
+        //create connector
+        connector_ptr.reset(new Connect(client_options));
+    }
+
+    ~Connection()
+    {
         close();
     }
 
-    void close() {
-        if(is_closed.load()){
+    void close() 
+    {
+        if(is_closed.load())
+        {
             return;
         }
-        for(int i = 0 ; i < session_vec.size(); ++i){
+        for(int i = 0 ; i < session_vec.size(); ++i)
+        {
             session_vec[i]->stop();
             delete session_vec[i];
         }
-        m_connect.close();
+        connector_ptr->close();
         is_closed.store(true);
     }
-/*
-    void cancel(){
-        for(int i = 0; i < session_vec.size(); ++i){
-            session_vec[i]->cancel();
-        }
-    }
-*/    
-    // TCP and rdma set hdcs_arg....TODO
-    void set_session_arg(void* arg){
-        //process_msg_arg = arg; 
-        //for(int i = 0; i < session_vec.size(); ++i){
-        //    session_vec[i]->set_session_arg(arg);
-        //}
 
-        // just for rdma
-
-        m_connect.set_hdcs_arg(arg);
-
-    }
-
-    int connect( std::string ip_address, std::string port){
+    // TODO type express communication type.
+    int connect( std::string ip_address, std::string port, int type = 0)
+    {
         SessionPtr new_session;
-        for(int i=0; i < session_num; i++){
-            new_session = m_connect.sync_connect( ip_address, port, process_msg );
-            if(new_session != NULL){
-                session_vec.push_back( new_session );
-            }else{
-                std::cout<<"Client::sync_connect failed.."<<std::endl;
+        for(int i=0; i < client_options._session_num; i++)
+        {
+            new_session = connector_ptr->sync_connect( ip_address, port);
+            if(new_session != NULL)
+            {
+                session_vec.push_back(new_session);
+            }
+            else
+            {
+                std::cout<<"Client::sync_connect failed."<<std::endl;
             }
         }
-        if( session_vec.size() == session_num ){
+        if( session_vec.size() == client_options._session_num )
+        {
             std::cout<<"Networking: "<<session_vec.size()<<" sessions have been created..."<<std::endl;
             is_closed.store(false);
-        }else{
+        }
+        else
+        {
             assert(0);
         }
         return 0;
     }
 
-    ssize_t communicate( std::string send_buffer){
+    ssize_t communicate( std::string send_buffer)
+    {
         int temp_index;
         session_index_lock.lock();
         temp_index = session_index;
-        if(++session_index==session_vec.size()){
+        if(++session_index==session_vec.size())
+        {
             session_index = 0;
         }
         session_index_lock.unlock();
@@ -105,15 +116,17 @@ public:
         return ret;
     }
 
-    void aio_communicate(std::string&& send_buffer){
+    void aio_communicate(std::string&& send_buffer)
+    {
         int temp_index; 
         session_index_lock.lock();
         temp_index = session_index;
-        if(++session_index==session_vec.size()){
+        if(++session_index==session_vec.size())
+        {
             session_index = 0;
         }
         //session_index_lock.unlock(); // TODO TODO TODO
-        session_vec[temp_index]->aio_communicate( send_buffer, generate_sequence_id() );
+        session_vec[temp_index]->aio_communicate(send_buffer, generate_sequence_id());
         session_index_lock.unlock();
     }
 
@@ -122,7 +135,9 @@ private:
     uint64_t generate_sequence_id(){
         return ++_next_sequence_id;
     }
-};
-} //hdcs
-}
+
+}; // hdcs
+
+} // namespace networking
+} // namespace hdcs
 #endif

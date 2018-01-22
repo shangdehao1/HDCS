@@ -4,9 +4,8 @@
 namespace hdcs{
 namespace networking{
 
-// SessionArg will be passed to User of networking layer,
-// then re-passed to networking layer. 
-//
+// At HDCS, SessionArg will be passed to HDCS,
+// then re-passed back to networking layer. 
 class SessionArg{
 public:
     SessionArg(const void* s_id, uint64_t _seq)

@@ -3,7 +3,7 @@
 
 /* wrapper for rdma callback function 
  *
- * hdcs_handle_msg can be posted to thread_group --sdh
+ * hdcs_handle_msg can be posted to thread_group 
  */
 #include <string>
 
@@ -200,19 +200,20 @@ private:
 };
 
 // callback of accept
-// when this function be called, express that a connection request arrived, and 
-// sucessfully estimash a conntion. 
+// when this function be called, express that a connection request have arrived.
 class InternalOnAccept : public Callback{
 public:
     InternalOnAccept(SessionSet& s_s)
         : session_set(s_s)
     {}
 
-    ~InternalOnAccept(){
+    ~InternalOnAccept()
+    {
         // TODO delete session. 
     }
 
-    virtual void entry(void *param, void* msg = nullptr) override {
+    virtual void entry(void *param, void* msg = nullptr) override 
+    {
         RDMAConnection* conn = static_cast<RDMAConnection*>(param);
         assert(_internal_process_msg_ptr);
         conn->set_read_callback(_internal_process_msg_ptr.get());
@@ -225,19 +226,19 @@ public:
 
     }
 
-    void set_process_msg(std::shared_ptr<InternalProcessMsg> _p_m){
+    void set_process_msg(std::shared_ptr<InternalProcessMsg> _p_m)
+    {
         _internal_process_msg_ptr = _p_m;
     }
 
 private:
-
     SessionPtr new_session;
     SessionSet& session_set;
     std::shared_ptr<InternalProcessMsg> _internal_process_msg_ptr;
+
 };
 
-
-}
-}
+}// namespace networking
+}// namespace hdcs
 
 #endif
